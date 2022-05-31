@@ -2,8 +2,6 @@
 # @Time    : 2021/11/29 16:55
 # @Author  : Tuffy
 # @Description :
-import asyncio
-from functools import wraps
 from typing import (
     Any,
     Callable,
@@ -21,7 +19,6 @@ from fastapi.encoders import DictIntStrAny, SetIntStr
 from fastapi.responses import ORJSONResponse, Response
 from fastapi.types import DecoratedCallable
 from starlette.routing import BaseRoute
-from starlette.routing import Mount as Mount  # noqa
 
 
 class Action(object):
@@ -83,15 +80,8 @@ class Action(object):
         }
 
     def __call__(self, func: Callable) -> DecoratedCallable:
-        @wraps(func)  # 保持原函数名不变
-        async def wrapper(*args, **kwargs):
-            if asyncio.iscoroutinefunction(func):
-                return await func(*args, **kwargs)
-            return func(*args, **kwargs)
-
-        wrapper.__dict__["__fast_view__"] = self.__fast_params
-
-        return wrapper
+        func.__dict__["__fast_view__"] = self.__fast_params
+        return func
 
     @staticmethod
     def get(

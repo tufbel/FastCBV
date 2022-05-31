@@ -53,9 +53,9 @@ class ViewSetMetaClass(type):
 
         return super().__new__(mcs, name, bases, attrs)
 
-    def __call__(cls, *args, **kwargs):
-        # _instance = super().__call__(*args, **kwargs)
-        return super().__call__(*args, **kwargs)
+    # def __call__(cls, *args, **kwargs):
+    #     # _instance = super().__call__(*args, **kwargs)
+    #     return super().__call__(*args, **kwargs)
 
     @staticmethod
     def _check_attrs(attrs: Dict, name: str):
@@ -147,7 +147,8 @@ class BaseViewSet(metaclass=ViewSetMetaClass):
             # 创建视图函数
             fast_route = cls.__create_fast_route(view_func, view_name, cls)
             # 转发器动态添加视图函数路由
-            setattr(cls.__transponder, view_name, MethodType(fast_route, cls.__transponder))
+            # setattr(cls.__transponder, f"transponder_{view_name}", MethodType(fast_route, cls.__transponder))
+            setattr(cbv_transponder_class_, f"transponder_{view_name}", fast_route)
             # 注册视图函数
             # router.api_route(**cls.__build_fast_view_params(view_func.__fast_view__, view_func))(getattr(cls.__transponder, view_name))
             router.add_api_route(endpoint=getattr(cls.__transponder, view_name), **cls.__build_fast_view_params(view_func.__fast_view__, view_func))
@@ -175,7 +176,8 @@ class BaseViewSet(metaclass=ViewSetMetaClass):
     @staticmethod
     def __create_fast_route(view_func: DecoratedCallable, view_name: str, call_cls: Callable) -> DecoratedCallable:
         @wraps(view_func)
-        async def fast_route(self_, *view_args, **view_kwargs) -> Response:
-            return await getattr(call_cls(), view_name)(*view_args, **view_kwargs)
+        async def fast_route(self, *view_args, **view_kwargs) -> Response:
+            # return await getattr(call_cls(), view_name)(*view_args, **view_kwargs)
+            return await view_func(call_cls(), *view_args, **view_kwargs)
 
         return fast_route
