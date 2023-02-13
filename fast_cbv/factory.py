@@ -4,14 +4,14 @@
 # @Description :
 from typing import List, Type
 
-from tortoise import Model
 from tortoise.contrib.fastapi import HTTPNotFoundError
 from tortoise.contrib.pydantic import PydanticModel
+from tortoise.models import MODEL
 
 from .decorators import Action
 
 
-def generate_all(model: Model, schema: Type[PydanticModel]):
+def generate_all(model: Type[MODEL], schema: Type[PydanticModel]):
     """
     生成视图集的all方法
     Args:
@@ -31,7 +31,7 @@ def generate_all(model: Model, schema: Type[PydanticModel]):
     return all
 
 
-def generate_create(model: Model, schema: Type[PydanticModel], input_schema: PydanticModel):
+def generate_create(model: Type[MODEL], schema: Type[PydanticModel], input_schema: Type[PydanticModel]):
     """
     生成视图集的create方法
     Args:
@@ -51,7 +51,7 @@ def generate_create(model: Model, schema: Type[PydanticModel], input_schema: Pyd
     return create
 
 
-def generate_get(model: Model, schema: Type[PydanticModel], pk_type: Type):
+def generate_get(model: Type[MODEL], schema: Type[PydanticModel], pk_type: Type):
     """
     生成视图集的get方法
     Args:
@@ -72,7 +72,7 @@ def generate_get(model: Model, schema: Type[PydanticModel], pk_type: Type):
     return get
 
 
-def generate_update(model: Model, schema: Type[PydanticModel], pk_type: Type, input_schema: PydanticModel):
+def generate_update(model: Type[MODEL], schema: Type[PydanticModel], pk_type: Type, input_schema: Type[PydanticModel]):
     """
     生成视图集的update方法
     Args:
@@ -87,15 +87,17 @@ def generate_update(model: Model, schema: Type[PydanticModel], pk_type: Type, in
 
     @Action.patch(f"/{{pk}}", response_model=schema, responses={404: {"model": HTTPNotFoundError}})
     async def update(self, pk: pk_type, body: input_schema):
-        await model.filter(pk=pk).update(**body.dict(exclude_unset=True, exclude_defaults=True))
-        return await schema.from_queryset_single(model.get(pk=pk))
+        obj: MODEL = await model.get(pk=pk)
+        obj.update_from_dict(body.dict(exclude_unset=True))
+        await obj.save()
+        return await schema.from_tortoise_orm(obj)
 
     update.__doc__ = f"Update {model.__name__} by primary key"
 
     return update
 
 
-def generate_delete(model: Model, schema: Type[PydanticModel], pk_type: Type):
+def generate_delete(model: Type[MODEL], schema: Type[PydanticModel], pk_type: Type):
     """
     生成视图集的delete方法
     Args:
@@ -110,7 +112,7 @@ def generate_delete(model: Model, schema: Type[PydanticModel], pk_type: Type):
     @Action.delete(f"/{{pk}}", response_model=schema, responses={404: {"model": HTTPNotFoundError}})
     async def delete(self, pk: pk_type):
         obj = await model.get(pk=pk)
-        deleted_count_ = await model.filter(pk=pk).delete()
+        deleted_count_ = await obj.delete()
         return await schema.from_tortoise_orm(obj)
 
     delete.__doc__ = f"Delete {model.__name__} by primary key"
