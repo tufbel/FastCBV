@@ -71,6 +71,9 @@ class CompanyViewSet(BaseViewSet):
         "get": None,
         "update": CompanyUpdatePydantic,
         "delete": None,
+        "filter": {
+            "acronym": (None, str),
+        }
     }
 
 

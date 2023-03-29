@@ -2,10 +2,12 @@
 # @Time    : 2021/12/16 9:14
 # @Author  : Tuffy
 # @Description :
-from typing import List, Type
+from inspect import Parameter, signature
+from typing import Dict, List, Tuple, Type
 
 from tortoise.contrib.fastapi import HTTPNotFoundError
 from tortoise.contrib.pydantic import PydanticModel
+from tortoise.expressions import Q
 from tortoise.models import MODEL
 
 from .decorators import Action
@@ -118,3 +120,39 @@ def generate_delete(model: Type[MODEL], schema: Type[PydanticModel], pk_type: Ty
     delete.__doc__ = f"Delete {model.__name__} by primary key"
 
     return delete
+
+
+def generate_filter(model: Type[MODEL], schema: Type[PydanticModel], query_params: Dict[str, Tuple]):
+    """
+    生成视图集的filter方法
+    Args:
+        model: 视图集的orm模型
+        schema: 视图输出序列化
+        query_params: 查询参数
+            {name: (default_value, default_type)} 例如 {"type": (None, str), "age": (18, int)}
+            作为key的name为作为查询条件的字段名。
+            作为value的default_value默认值和default_type默认值类型
+
+    Returns:
+        CoroutineType: 由 async def 创建的协程方法
+    """
+
+    @Action.get("/filter", response_model=List[schema])
+    async def filter(self, **kwargs):
+        q_filter = Q()
+        for name, v_ in query_params.items():
+            if name in kwargs and kwargs[name] is not None:
+                q_filter &= Q(**{name: kwargs[name]})
+        return await schema.from_queryset(model.filter(q_filter))
+
+    sig_params = [
+        Parameter(name, Parameter.KEYWORD_ONLY, default=v_[0], annotation=v_[1])
+        for name, v_ in query_params.items()
+    ]
+    sig_ = signature(filter)
+    sig_params.insert(0, sig_.parameters["self"])
+    sig_ = sig_.replace(parameters=sig_params)
+
+    filter.__signature__ = sig_
+    filter.__doc__ = f"Filter {model.__name__} that match the query"
+    return filter

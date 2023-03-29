@@ -13,7 +13,7 @@ from loguru import logger
 from tortoise import Model
 from tortoise.contrib.pydantic import PydanticModel
 
-from .factory import generate_all, generate_create, generate_get, generate_update, generate_delete
+from .factory import generate_all, generate_create, generate_filter, generate_get, generate_update, generate_delete
 
 
 class CBVTransponder(object):
@@ -50,6 +50,9 @@ class ViewSetMetaClass(type):
 
         if "delete" in attrs["views"] and "delete" not in attrs:
             attrs["delete"] = generate_delete(attrs["model"], attrs["schema"], attrs["pk_type"])
+
+        if "filter" in attrs["views"] and "filter" not in attrs:
+            attrs["filter"] = generate_filter(attrs["model"], attrs["schema"], attrs["views"]["filter"])
 
         return super().__new__(mcs, name, bases, attrs)
 
